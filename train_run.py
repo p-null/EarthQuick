@@ -23,29 +23,25 @@ compute_target = workspace.get_default_compute_target(cluster_type)
 # Prepare data
 
 data_folder = os.path.join(os.getcwd(), 'data')
-'''
 os.makedirs(data_folder, exist_ok=True)
-In next version, should retrive data from url
-'''
-import urllib.request
 
+import urllib.request
 urllib.request.urlretrieve('http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz', filename=os.path.join(data_folder, 'train-images.gz'))
 urllib.request.urlretrieve('http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz', filename=os.path.join(data_folder, 'train-labels.gz'))
 urllib.request.urlretrieve('http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz', filename=os.path.join(data_folder, 'test-images.gz'))
 urllib.request.urlretrieve('http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz', filename=os.path.join(data_folder, 'test-labels.gz'))
 
 
-
 # Upload data to cloud
 
-data_store = workspace.get_default_store()
+data_store = workspace.get_default_datastore()
 data_store.upload(src_dir=data_folder, target_path="target_data_folder", overwrite=True, show_progress=True)
 
 
 # Crate directory & training script
 
 script_folder = os.path.join(os.getcwd(), "script_folder")
-os.mkdirs(script_folder, exist_ok=True)
+os.makedirs(script_folder, exist_ok=True)
 
 
 # Create a estimator
