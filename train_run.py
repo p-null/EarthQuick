@@ -1,8 +1,7 @@
 import os
 import azureml.core
 from azureml.core import Workspace, Experiment, Run
-from azure.core import Experiment
-from azure.train.estimator import Estimator
+from azureml.train.estimator import Estimator
 
 # Create workspace
 
