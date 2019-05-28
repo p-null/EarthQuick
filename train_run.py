@@ -2,6 +2,7 @@ import os
 import azureml.core
 from azureml.core import Workspace, Experiment, Run
 from azureml.train.estimator import Estimator
+from azureml.core.compute import AmlCompute, ComputeTarget 
 
 # Create workspace
 
@@ -16,8 +17,25 @@ experiment = Experiment(workspace=workspace, name=experiment_name)
 
 # Create/Attact existing compute resource
 
-cluster_type = os.environ.get("AML_COMPUTE_CLUSTER_TYPE", "CPU")
-compute_target = workspace.get_default_compute_target(cluster_type)
+#compute_cluster_type = os.environ.get("AML_COMPUTE_compute_cluster_type", "CPU")
+#compute_target = workspace.get_default_compute_target(compute_cluster_type)
+
+compute_cluster_name = os.environ.get("AML_COMPUTE_compute_cluster_name", "cpu_cluster")
+cluster_min_nodes = os.environ.get("AML_COMPUTE_CLUSTER_MIN_NODES", 0)
+cluster_max_nodes = os.environ.get("AML_COMPUTE_CLUSTER_MAX_NODES", 4)
+
+vm_size = os.environ.get("AML_COMPUTE_CLUSTER_SKU", "STANDARD_D1_V2")
+
+if compute_cluster_name in workspace.compute_targets:
+    compute_target = workspace.compute_targets['compute_cluster_name']
+    if compute_target and type(compute_target) is AmlCompute:
+        print("using existing compute_target: {}".format(compute_target_name))
+else:
+    print("creating a new one")
+    provisioning_config = AmlCompute.provisioning_configuration(vm_size=vm_size,
+                                                                min_nodes=cluster_min_nodes,
+                                                                max_nodes=cluster_max_nodes)
+    compute_target = ComputeTarget.create(workspace, compute_cluster_name, provisioning_config)
 
 
 # Prepare data
