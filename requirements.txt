@@ -86,10 +86,15 @@ azure-storage-queue==1.4.0
 certifi==2019.3.9
 cffi==1.12.3
 chardet==3.0.4
+Click==7.0
 cryptography==2.7
+Flask==1.0.3
 gunicorn==19.9.0
 idna==2.8
 isodate==0.6.0
+itsdangerous==1.1.0
+Jinja2==2.10.1
+MarkupSafe==1.1.1
 msrest==0.6.6
 msrestazure==0.6.0
 oauthlib==3.0.1
@@ -100,3 +105,4 @@ requests==2.22.0
 requests-oauthlib==1.2.0
 six==1.12.0
 urllib3==1.25.3
+Werkzeug==0.15.4
