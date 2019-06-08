@@ -15,7 +15,7 @@ from tqdm import tqdm_notebook as tqdm
 import numpy as np
 import pandas as pd
 
-raw = pd.read_csv('/home/cornelis/Downloads/EQ_test/train.csv', nrows=100, dtype={'acoustic_data': np.int16, 'time_to_failure': np.float64})
+raw = pd.read_csv('/home/cornelis/Downloads/EQ_test/train.csv', nrows=100000, dtype={'acoustic_data': np.int16, 'time_to_failure': np.float64})
 
 # 2
 
@@ -64,8 +64,8 @@ def parse_sample(sample, start):
 
 
 def sample_train_gen(df, segment_size=150_000, indices_to_calculate=[0]):
-    result = Parallel(n_jobs=4, temp_folder="/tmp", max_nbytes=None, backend="multiprocessing")(delayed(parse_sample)(df[int(i): int(i) + segment_size], int(i))
-                                                                                                for i in tqdm(indices_to_calculate))
+    result = Parallel(n_jobs=4, temp_folder="/tmp", max_nbytes=None, backend="multiprocessing")(delayed(parse_sample)(df[int(i): int(i) + segment_size], int(i)) for i in tqdm(indices_to_calculate))
+    pdb.set_trace()
     data = [r.values for r in result]
     data = np.vstack(data)
     X = pd.DataFrame(data, columns=result[0].columns)
