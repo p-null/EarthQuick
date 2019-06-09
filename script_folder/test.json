@@ -1,0 +1,14 @@
+[
+    {
+        "var_num_peaks_2_denoise_simple": 5624,
+        "var_percentile_roll50_std_20": 2.670883090617498,
+        "var_mfcc_mean4": -10.407048330856083,
+        "var_mfcc_mean18": -1.1016275861567224
+    },
+    {
+        "var_num_peaks_2_denoise_simple": 5524,
+        "var_percentile_roll50_std_20": 2.660883090617498,
+        "var_mfcc_mean4": -11.407048330856083,
+        "var_mfcc_mean18": -2.1016275861567224
+    }
+]
