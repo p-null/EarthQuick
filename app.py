@@ -16,8 +16,24 @@ import plotly.graph_objs as go
 import pandas as pd
 import numpy as np
 
+from tqdm import tqdm_notebook as tqdm
+from joblib import Parallel, delayed
+import scipy as sp
+import itertools
+import gc
+
+from tsfresh.feature_extraction import feature_calculators
+import librosa
+import pywt
+
+import sys
+if sys.version_info[0] < 3:
+    from StringIO import StringIO
+else:
+    from io import StringIO
+
 app = Flask(__name__, instance_relative_config=True)
-app.config['MAX_CONTENT_LENGTH'] = 0.5 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 
 # Azure Storage account access key
 TRAIN_SECRET_KEY = str(os.getenv("TRAIN_SECRET_KEY"))
@@ -28,6 +44,57 @@ container = "testcontainer"  # TODO: switch to prod container once ready (using 
 # blob_service = BlockBlobService(account_name=account, account_key=key)
 # blob_service = AppendBlobService(
 #     account_name=AZURE_BLOB_ACCOUNT, account_key=TRAIN_SECRET_KEY)
+noise = np.random.normal(0, 0.5, 150_000)
+
+def denoise_signal_simple(x, wavelet='db4', level=1):
+    coeff = pywt.wavedec(x, wavelet, mode="per")
+    #univeral threshold
+    uthresh = 10
+    coeff[1:] = (pywt.threshold(i, value=uthresh, mode='hard')
+                 for i in coeff[1:])
+    # Reconstruct the signal using the thresholded coefficients
+    return pywt.waverec(coeff, wavelet, mode='per')
+
+
+def feature_gen(z):
+    X = pd.DataFrame(index=[0], dtype=np.float64)
+
+    z = z + noise
+    z = z - np.median(z)
+
+    den_sample_simple = denoise_signal_simple(z)
+    mfcc = librosa.feature.mfcc(z)
+    mfcc_mean = mfcc.mean(axis=1)
+    percentile_roll50_std_20 = np.percentile(
+        pd.Series(z).rolling(50).std().dropna().values, 20)
+
+    X['var_num_peaks_2_denoise_simple'] = feature_calculators.number_peaks(
+        den_sample_simple, 2)
+    X['var_percentile_roll50_std_20'] = percentile_roll50_std_20
+    X['var_mfcc_mean18'] = mfcc_mean[18]
+    X['var_mfcc_mean4'] = mfcc_mean[4]
+
+    return X
+
+
+def sample_test_gen(uploaded_files):
+    X = pd.DataFrame()
+    pdb.set_trace()
+    submission = pd.read_csv(uploaded_files, sep='\n', index_col='seg_id')
+    result = Parallel(n_jobs=4, temp_folder="/tmp", max_nbytes=None, backend="multiprocessing")(
+        delayed(parse_sample_test)(seg_id, uploaded_files) for seg_id in tqdm(submission.index))
+    data = [r.values for r in result]
+    data = np.vstack(data)
+    X = pd.DataFrame(data, columns=result[0].columns)
+    return X
+
+
+def parse_sample_test(dat):
+    sample = pd.read_csv(dat, sep='\n', dtype={'acoustic_data': np.int32})
+    delta = feature_gen(sample['acoustic_data'].values)
+    # delta['seg_id'] = seg_id TODO: include?
+    return delta
+
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
@@ -36,13 +103,33 @@ def upload_file():
     <title>Upload new File</title>
     <h1>Upload new File</h1>
     <form action="" method=post enctype=multipart/form-data>
-      <p><input type=file name=file>
-         <input type=submit value=Upload>
+      <p><input type="file" name="file[]" multiple="">
+         <input type="submit" value="Upload">
     </form>
     '''
     if request.method == 'POST':
-        file = request.files['file']
-        
+        # file = request.files['file']
+        uploaded_files = request.files.getlist("file[]")
+        # test = sample_test_gen(uploaded_files)
+
+        raw_data = [f.read().decode("utf-8") for f in uploaded_files]        
+        acoustic_data = [raw.split('\n') for raw in raw_data]
+        acoustic_data = [j for i in acoustic_data for j in i]
+        data = [parse_sample_test(StringIO(raw)) for raw in raw_data]
+        data = np.vstack(data)
+        features = ['var_num_peaks_2_denoise_simple',
+                    'var_percentile_roll50_std_20', 'var_mfcc_mean4',  'var_mfcc_mean18']
+        test = pd.DataFrame(data, columns=features)
+        test_X = test[features].values
+
+        test_json = []
+        for row in test_X:
+            test_json.append({
+                features[0]: row[0],
+                features[1]: row[1],
+                features[2]: row[2],
+                features[3]: row[3],
+            })
         # filename = secure_filename(file.filename)
         # fileextension = filename.rsplit('.', 1)[1]
         # pdb.set_trace()
@@ -56,10 +143,14 @@ def upload_file():
         #             flash(f'Line {idx} is not a number')
         #             return html
         res = requests.post('http://52.224.186.42/score',
-                            json=json.loads(file.read()))
+                            json=test_json)
+        # res = requests.post('http://52.224.186.42/score',
+        #                     json=json.loads(test.to_json()))
 
         feature = 'Line'
-        plot_res = create_plot(feature, json.loads(res.json()))
+        acoustic_data = [int(a) for a in acoustic_data if a.isdigit()]
+        time_to_failure = json.loads(res.json())['result'].split(',')
+        plot_res = create_plot(feature, acoustic_data, time_to_failure)
         return render_template('index.html', plot=plot_res)
 
 
@@ -144,21 +235,31 @@ def upload_file():
 
     return html
 
-def create_plot(feature, pred_json):
+def create_plot(feature, acoustic_data, time_to_failure):
     if feature == 'Line':
-        count = 10 #TODO: make count dynamic
-        xScale = np.linspace(0, 1, count)
-        acoustic_data_scale = np.random.randn(count)
-        time_to_failure_scale = pred_json['result'].split(',')
-
+        xScale = np.linspace(0, 1, len(acoustic_data))
+        xScale2 = np.linspace(0, 1, len(time_to_failure))
         # Create traces
         acoustic_data = go.Scatter(
             x=xScale,
-            y=acoustic_data_scale
+            y=acoustic_data,
+            name='acoustic data'
         )
         time_to_failure = go.Scatter(
-            x=xScale,
-            y=time_to_failure_scale
+            x=xScale2,
+            y=time_to_failure,
+            name='time to failure',
+        )
+        layout = go.Layout(
+            title='Earthquick',
+            yaxis=dict(
+                title='acoustic data'
+            ),
+            yaxis2=dict(
+                title='time to failure',
+                overlaying='y',
+                side='right'
+            )
         )
         data = [acoustic_data, time_to_failure]
         graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
