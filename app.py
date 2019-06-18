@@ -149,7 +149,7 @@ def upload_file():
 
         feature = 'Line'
         acoustic_data = [int(a) for a in acoustic_data if a.isdigit()]
-        time_to_failure = json.loads(res.json())['result'].split(',')
+        time_to_failure = [float(t) for t in json.loads(res.json())['result'].split(',')]
         plot_res = create_plot(feature, acoustic_data, time_to_failure)
         return render_template('index.html', plot=plot_res)
 
@@ -237,8 +237,8 @@ def upload_file():
 
 def create_plot(feature, acoustic_data, time_to_failure):
     if feature == 'Line':
-        xScale = np.linspace(0, 1, len(acoustic_data))
-        xScale2 = np.linspace(0, 1, len(time_to_failure))
+        xScale = np.linspace(0, len(acoustic_data), len(acoustic_data))
+        xScale2 = np.linspace(150000//2, len(acoustic_data)+(150000//2), len(time_to_failure))
         # Create traces
         acoustic_data = go.Scatter(
             x=xScale,
@@ -247,7 +247,7 @@ def create_plot(feature, acoustic_data, time_to_failure):
         )
         time_to_failure = go.Scatter(
             x=xScale2,
-            y=time_to_failure,
+            y=[t*10 for t in time_to_failure],
             name='time to failure',
         )
         layout = go.Layout(
