@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+import batch as util
+import config
+
 import pdb
 import os
 from flask import Flask, request, redirect, url_for, flash, render_template
@@ -26,6 +29,11 @@ from tsfresh.feature_extraction import feature_calculators
 import librosa
 import pywt
 
+import azure.storage.blob as azureblob
+import azure.batch.batch_service_client as batch
+import azure.batch.batch_auth as batch_auth
+import azure.batch.models as batchmodels
+
 import sys
 if sys.version_info[0] < 3:
     from StringIO import StringIO
@@ -35,66 +43,13 @@ else:
 app = Flask(__name__, instance_relative_config=True)
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 
-# Azure Storage account access key
-TRAIN_SECRET_KEY = str(os.getenv("TRAIN_SECRET_KEY"))
-AZURE_BLOB_ACCOUNT = str(os.getenv("AZURE_BLOB_ACCOUNT"))
-IS_LOCAL = bool(os.getenv("IS_LOCAL"))
-container = "testcontainer"  # TODO: switch to prod container once ready (using environ vars)
 
-# blob_service = BlockBlobService(account_name=account, account_key=key)
-# blob_service = AppendBlobService(
+blob_client = azureblob.BlockBlobService(
+    account_name=config._STORAGE_ACCOUNT_NAME,
+    account_key=config._STORAGE_ACCOUNT_KEY)
+
+# append_blob_service = AppendBlobService(
 #     account_name=AZURE_BLOB_ACCOUNT, account_key=TRAIN_SECRET_KEY)
-noise = np.random.normal(0, 0.5, 150_000)
-
-def denoise_signal_simple(x, wavelet='db4', level=1):
-    coeff = pywt.wavedec(x, wavelet, mode="per")
-    #univeral threshold
-    uthresh = 10
-    coeff[1:] = (pywt.threshold(i, value=uthresh, mode='hard')
-                 for i in coeff[1:])
-    # Reconstruct the signal using the thresholded coefficients
-    return pywt.waverec(coeff, wavelet, mode='per')
-
-
-def feature_gen(z):
-    X = pd.DataFrame(index=[0], dtype=np.float64)
-
-    z = z + noise
-    z = z - np.median(z)
-
-    den_sample_simple = denoise_signal_simple(z)
-    mfcc = librosa.feature.mfcc(z)
-    mfcc_mean = mfcc.mean(axis=1)
-    percentile_roll50_std_20 = np.percentile(
-        pd.Series(z).rolling(50).std().dropna().values, 20)
-
-    X['var_num_peaks_2_denoise_simple'] = feature_calculators.number_peaks(
-        den_sample_simple, 2)
-    X['var_percentile_roll50_std_20'] = percentile_roll50_std_20
-    X['var_mfcc_mean18'] = mfcc_mean[18]
-    X['var_mfcc_mean4'] = mfcc_mean[4]
-
-    return X
-
-
-def sample_test_gen(uploaded_files):
-    X = pd.DataFrame()
-    pdb.set_trace()
-    submission = pd.read_csv(uploaded_files, sep='\n', index_col='seg_id')
-    result = Parallel(n_jobs=4, temp_folder="/tmp", max_nbytes=None, backend="multiprocessing")(
-        delayed(parse_sample_test)(seg_id, uploaded_files) for seg_id in tqdm(submission.index))
-    data = [r.values for r in result]
-    data = np.vstack(data)
-    X = pd.DataFrame(data, columns=result[0].columns)
-    return X
-
-
-def parse_sample_test(dat):
-    sample = pd.read_csv(dat, sep='\n', dtype={'acoustic_data': np.int32})
-    delta = feature_gen(sample['acoustic_data'].values)
-    # delta['seg_id'] = seg_id TODO: include?
-    return delta
-
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
@@ -109,10 +64,55 @@ def upload_file():
     '''
     if request.method == 'POST':
         # file = request.files['file']
-        uploaded_files = request.files.getlist("file[]")
+        input_container_name = 'temp'
+        blob_client.create_container(input_container_name, fail_on_exist=False)
+
+        file_streams = request.files.getlist("file[]")
+
         # test = sample_test_gen(uploaded_files)
 
-        raw_data = [f.read().decode("utf-8") for f in uploaded_files]        
+        # Upload the data files.
+        input_files = [
+            util.upload_file_to_container(
+                blob_client, input_container_name, file_stream)
+            for file_stream in file_streams]
+        # try:
+        #     for file_stream in file_streams:
+        #         util.upload_file_to_container(
+        #             blob_client, input_container_name, file_stream)
+        # except Exception:
+        #     print('create_blob_from_stream Exception=' + Exception)
+
+        # Create a Batch service client. We'll now be interacting with the Batch
+        # service in addition to Storage
+        credentials = batch_auth.SharedKeyCredentials(config._BATCH_ACCOUNT_NAME,
+                                                    config._BATCH_ACCOUNT_KEY)
+        batch_client = batch.BatchServiceClient(
+            credentials,
+            base_url=config._BATCH_ACCOUNT_URL)
+
+        try:
+            # Create the pool that will contain the compute nodes that will execute the
+            # tasks.
+            util.create_pool(batch_client, config._POOL_ID)
+
+            # Create the job that will run the tasks.
+            util.create_job(batch_client, config._JOB_ID, config._POOL_ID)
+
+            # Add the tasks to the job.
+            # TODO
+            util.add_tasks(batch_client, config._JOB_ID, input_files)
+
+            # Pause execution until tasks reach Completed state.
+            # TODO
+            util.wait_for_tasks_to_complete(batch_client,
+                                    config._JOB_ID,
+                                    datetime.timedelta(minutes=30))
+        except batchmodels.BatchErrorException as err:
+            util.print_batch_exception(err)
+            raise
+
+        raw_data = [f.read().decode("utf-8") for f in file_streams]
         acoustic_data = [raw.split('\n') for raw in raw_data]
         acoustic_data = [j for i in acoustic_data for j in i]
         data = [parse_sample_test(StringIO(raw)) for raw in raw_data]
@@ -142,7 +142,9 @@ def upload_file():
         #         if not is_number(line):
         #             flash(f'Line {idx} is not a number')
         #             return html
-        res = requests.post('http://52.224.186.42/score',
+        #TODO: have test_json by this stage after it has gone through batch processing 
+        pdb.set_trace()
+        res = requests.post('http://52.224.188.74/score',
                             json=test_json)
         # res = requests.post('http://52.224.186.42/score',
         #                     json=json.loads(test.to_json()))
