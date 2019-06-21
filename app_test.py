@@ -5,6 +5,8 @@ from sklearn.externals import joblib
 from waitress import serve
 # from script_folder import train
 
+import pdb
+
 app = Flask(__name__)
 
 
@@ -36,4 +38,4 @@ def predict():
 
 # This is important so that the server will run when the docker container has been started. Host=0.0.0.0 needs to be provided to make the server publicly available.
 if __name__ == "__main__":
-    serve(app, host='0.0.0.0', port=5000)
+    serve(app, host='0.0.0.0', port=9000)
