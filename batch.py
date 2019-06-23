@@ -191,33 +191,44 @@ def add_tasks(batch_service_client, job_id, input_files):
     """
 
     print('Adding {} tasks to job [{}]...'.format(len(input_files), job_id))
-
     tasks = list()
-
     for idx, input_file in enumerate(input_files):
-        pdb.set_trace()
-        raw_data = input_file.read().decode("utf-8")
-        acoustic_data = raw_data.split('\n')
-        # acoustic_data = [j for i in acoustic_data for j in i]
-        data = transform.parse_sample_test(StringIO(raw_data))
-
-    # I n    
-    data = np.vstack(data)
-    features = ['var_num_peaks_2_denoise_simple',
-                'var_percentile_roll50_std_20', 'var_mfcc_mean4',  'var_mfcc_mean18']
-    test = pd.DataFrame(data, columns=features)
-    test_X = test[features].values
-
-        # TODO: use TaskAddParamater to issue a batch command to run above code for each ResourceFile??
-        # command = "/bin/bash -c \"cat {}\"".format(input_file.file_path)
-        # tasks.append(batch.models.TaskAddParameter(
-        #     id='Task{}'.format(idx),
-        #     command_line=command,
-        #     resource_files=[input_file]
-        # )
-        # )
+        # command = "python3 -c \"import transform; tranform.batch_process({})\"".format(
+        #     input_file.file_path)
+        command = "/bin/bash -c \"python3 transform.py {}\"".format(input_file.file_path)
+        tasks.append(batch.models.TaskAddParameter(
+            id='Task{}'.format(idx),
+            command_line=command,
+            resource_files=[input_file]
+        )
+        )
 
     batch_service_client.task.add_collection(job_id, tasks)
+
+    # #### OLD ATTEMPT
+    # for idx, input_file in enumerate(input_files):
+    #     raw_data = input_file.read().decode("utf-8")
+    #     acoustic_data = raw_data.split('\n')
+    #     # acoustic_data = [j for i in acoustic_data for j in i]
+    #     data = transform.parse_sample_test(StringIO(raw_data))
+
+    # # I'm    
+    # data = np.vstack(data)
+    # features = ['var_num_peaks_2_denoise_simple',
+    #             'var_percentile_roll50_std_20', 'var_mfcc_mean4',  'var_mfcc_mean18']
+    # test = pd.DataFrame(data, columns=features)
+    # test_X = test[features].values
+
+    #     # TODO: use TaskAddParamater to issue a batch command to run above code for each ResourceFile??
+    #     # command = "/bin/bash -c \"cat {}\"".format(input_file.file_path)
+    #     # tasks.append(batch.models.TaskAddParameter(
+    #     #     id='Task{}'.format(idx),
+    #     #     command_line=command,
+    #     #     resource_files=[input_file]
+    #     # )
+    #     # )
+
+    # batch_service_client.task.add_collection(job_id, tasks)
 
 
 def wait_for_tasks_to_complete(batch_service_client, job_id, timeout):

@@ -3,6 +3,7 @@
 import batch as util
 import config
 
+import uuid
 import pdb
 import os
 from flask import Flask, request, redirect, url_for, flash, render_template
@@ -33,6 +34,8 @@ import azure.storage.blob as azureblob
 import azure.batch.batch_service_client as batch
 import azure.batch.batch_auth as batch_auth
 import azure.batch.models as batchmodels
+
+import datetime
 
 import sys
 if sys.version_info[0] < 3:
@@ -94,34 +97,37 @@ def upload_file():
         try:
             # Create the pool that will contain the compute nodes that will execute the
             # tasks.
-            util.create_pool(batch_client, config._POOL_ID)
+            pool_id = config._POOL_ID + str(uuid.uuid4())
+            job_id = config._JOB_ID + str(uuid.uuid4())
+            util.create_pool(batch_client, pool_id)
 
             # Create the job that will run the tasks.
-            util.create_job(batch_client, config._JOB_ID, config._POOL_ID)
+            util.create_job(batch_client, job_id, pool_id)
 
             # Add the tasks to the job.
             # TODO
-            util.add_tasks(batch_client, config._JOB_ID, input_files)
+            util.add_tasks(batch_client, job_id, input_files)
 
             # Pause execution until tasks reach Completed state.
             # TODO
             util.wait_for_tasks_to_complete(batch_client,
-                                    config._JOB_ID,
+                                            job_id,
                                     datetime.timedelta(minutes=30))
         except batchmodels.BatchErrorException as err:
             util.print_batch_exception(err)
             raise
 
-        raw_data = [f.read().decode("utf-8") for f in file_streams]
-        acoustic_data = [raw.split('\n') for raw in raw_data]
-        acoustic_data = [j for i in acoustic_data for j in i]
-        data = [parse_sample_test(StringIO(raw)) for raw in raw_data]
-        data = np.vstack(data)
-        features = ['var_num_peaks_2_denoise_simple',
-                    'var_percentile_roll50_std_20', 'var_mfcc_mean4',  'var_mfcc_mean18']
-        test = pd.DataFrame(data, columns=features)
-        test_X = test[features].values
-
+        # raw_data = [f.read().decode("utf-8") for f in file_streams]
+        # acoustic_data = [raw.split('\n') for raw in raw_data]
+        # acoustic_data = [j for i in acoustic_data for j in i]
+        # data = [parse_sample_test(StringIO(raw)) for raw in raw_data]
+        # data = np.vstack(data)
+        # features = ['var_num_peaks_2_denoise_simple',
+        #             'var_percentile_roll50_std_20', 'var_mfcc_mean4',  'var_mfcc_mean18']
+        # test = pd.DataFrame(data, columns=features)
+        # test_X = test[features].values
+        test_X = 'TODO' 
+        #TODO: in transform.py we have our data, now get it here
         test_json = []
         for row in test_X:
             test_json.append({
@@ -143,6 +149,7 @@ def upload_file():
         #             flash(f'Line {idx} is not a number')
         #             return html
         #TODO: have test_json by this stage after it has gone through batch processing 
+        # TODO: the parts after this likely have to go in print_task_output in batch.py
         pdb.set_trace()
         res = requests.post('http://52.224.188.74/score',
                             json=test_json)
