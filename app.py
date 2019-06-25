@@ -66,19 +66,35 @@ def upload_file():
     </form>
     '''
     if request.method == 'POST':
-        # file = request.files['file']
-        input_container_name = 'temp'
-        blob_client.create_container(input_container_name, fail_on_exist=False)
-
+        # input_container_name = 'temp'
+        # blob_client.create_container(input_container_name, fail_on_exist=False)
         file_streams = request.files.getlist("file[]")
+        # file = request.files['file']
+        features = ['var_num_peaks_2_denoise_simple',
+                    'var_percentile_roll50_std_20', 'var_mfcc_mean4',  'var_mfcc_mean18']
+        test_X = pd.read_csv(file_streams[0].stream).values
+        # pdb.set_trace()
+        # acoustic_data = [raw.split('\n') for raw in raw_data]
+        # acoustic_data = [j for i in acoustic_data for j in i]
+        # data = [parse_sample_test(StringIO(raw)) for raw in raw_data]
+        # data = np.vstack(data)
+        # test = pd.DataFrame(data, columns=features)
+        # test_X = test[features].values
 
+        # pdb.set_trace()
         # test = sample_test_gen(uploaded_files)
 
         # Upload the data files.
-        input_files = [
-            util.upload_file_to_container(
-                blob_client, input_container_name, file_stream)
-            for file_stream in file_streams]
+        # input_files = [
+        #     util.upload_file_to_container(
+        #         blob_client, input_container_name, file_stream)
+        #     for file_stream in file_streams]
+        
+        # features = ['var_num_peaks_2_denoise_simple','var_percentile_roll50_std_20', 'var_mfcc_mean4',  'var_mfcc_mean18']
+        # pdb.set_trace()
+        # test = pd.DataFrame(data, columns=features)
+        # test_X = test[features].values
+
         # try:
         #     for file_stream in file_streams:
         #         util.upload_file_to_container(
@@ -88,34 +104,34 @@ def upload_file():
 
         # Create a Batch service client. We'll now be interacting with the Batch
         # service in addition to Storage
-        credentials = batch_auth.SharedKeyCredentials(config._BATCH_ACCOUNT_NAME,
-                                                    config._BATCH_ACCOUNT_KEY)
-        batch_client = batch.BatchServiceClient(
-            credentials,
-            base_url=config._BATCH_ACCOUNT_URL)
+        # credentials = batch_auth.SharedKeyCredentials(config._BATCH_ACCOUNT_NAME,
+        #                                             config._BATCH_ACCOUNT_KEY)
+        # batch_client = batch.BatchServiceClient(
+        #     credentials,
+        #     base_url=config._BATCH_ACCOUNT_URL)
 
-        try:
-            # Create the pool that will contain the compute nodes that will execute the
-            # tasks.
-            pool_id = config._POOL_ID + str(uuid.uuid4())
-            job_id = config._JOB_ID + str(uuid.uuid4())
-            util.create_pool(batch_client, pool_id)
+        # try:
+        #     # Create the pool that will contain the compute nodes that will execute the
+        #     # tasks.
+        #     pool_id = config._POOL_ID + str(uuid.uuid4())
+        #     job_id = config._JOB_ID + str(uuid.uuid4())
+        #     util.create_pool(batch_client, pool_id)
 
-            # Create the job that will run the tasks.
-            util.create_job(batch_client, job_id, pool_id)
+        #     # Create the job that will run the tasks.
+        #     util.create_job(batch_client, job_id, pool_id)
 
-            # Add the tasks to the job.
-            # TODO
-            util.add_tasks(batch_client, job_id, input_files)
+        #     # Add the tasks to the job.
+        #     # TODO
+        #     util.add_tasks(batch_client, job_id, input_files)
 
-            # Pause execution until tasks reach Completed state.
-            # TODO
-            util.wait_for_tasks_to_complete(batch_client,
-                                            job_id,
-                                    datetime.timedelta(minutes=30))
-        except batchmodels.BatchErrorException as err:
-            util.print_batch_exception(err)
-            raise
+        #     # Pause execution until tasks reach Completed state.
+        #     # TODO
+        #     util.wait_for_tasks_to_complete(batch_client,
+        #                                     job_id,
+        #                             datetime.timedelta(minutes=30))
+        # except batchmodels.BatchErrorException as err:
+        #     util.print_batch_exception(err)
+        #     raise
 
         # raw_data = [f.read().decode("utf-8") for f in file_streams]
         # acoustic_data = [raw.split('\n') for raw in raw_data]
@@ -126,16 +142,17 @@ def upload_file():
         #             'var_percentile_roll50_std_20', 'var_mfcc_mean4',  'var_mfcc_mean18']
         # test = pd.DataFrame(data, columns=features)
         # test_X = test[features].values
-        test_X = 'TODO' 
         #TODO: in transform.py we have our data, now get it here
         test_json = []
         for row in test_X:
+            print(row)
             test_json.append({
                 features[0]: row[0],
                 features[1]: row[1],
                 features[2]: row[2],
                 features[3]: row[3],
             })
+        pdb.set_trace()
         # filename = secure_filename(file.filename)
         # fileextension = filename.rsplit('.', 1)[1]
         # pdb.set_trace()
