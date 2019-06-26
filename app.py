@@ -269,8 +269,10 @@ def whitepaper():
 
 def create_plot(feature, acoustic_data, time_to_failure):
     if feature == 'Line':
-        xScale = np.linspace(0, len(acoustic_data), len(acoustic_data))
-        xScale2 = np.linspace(150000//2, len(acoustic_data)+(150000//2), len(time_to_failure))
+        # xScale = np.linspace(0, len(acoustic_data), len(acoustic_data))
+        # xScale2 = np.linspace(150000//2, len(acoustic_data)+(150000//2), len(time_to_failure))
+        xScale = np.linspace(0, 1, len(acoustic_data))
+        xScale2 = np.linspace(0, 1, len(time_to_failure))
         # Create traces
         acoustic_data = go.Scatter(
             x=xScale,
