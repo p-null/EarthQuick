@@ -55,16 +55,7 @@ blob_client = azureblob.BlockBlobService(
 #     account_name=AZURE_BLOB_ACCOUNT, account_key=TRAIN_SECRET_KEY)
 
 @app.route('/', methods=['GET', 'POST'])
-def upload_file():
-    html = '''
-    <!doctype html>
-    <title>Upload new File</title>
-    <h1>Upload new File</h1>
-    <form action="" method=post enctype=multipart/form-data>
-      <p><input type="file" name="file[]" multiple="">
-         <input type="submit" value="Upload">
-    </form>
-    '''
+def home():
     if request.method == 'POST':
         # input_container_name = 'temp'
         # blob_client.create_container(input_container_name, fail_on_exist=False)
@@ -259,7 +250,15 @@ def upload_file():
         # '''
 
 
-    return html
+    return render_template('home.html')
+
+@app.route('/about/')
+def about():
+    return render_template('about.html')
+
+@app.route('/whitepaper/')
+def whitepaper():
+    return render_template('whitepaper.html')
 
 def create_plot(feature, acoustic_data, time_to_failure):
     if feature == 'Line':
