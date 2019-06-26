@@ -97,16 +97,7 @@ def parse_sample_test(dat):
 
 
 @app.route('/', methods=['GET', 'POST'])
-def upload_file():
-   # html = '''
-   #<!doctype html>
-   # <title>Upload new File</title>
-    #<h1>Upload new File</h1>
-   # <form action="" method=post enctype=multipart/form-data>
-   #   <p><input type="file" name="file[]" multiple="">
-   #      <input type="submit" value="Upload">
-   # </form>
-   # '''
+def home():
     if request.method == 'POST':
         # file = request.files['file']
         uploaded_files = request.files.getlist("file[]")
