@@ -136,7 +136,7 @@ def home():
         #TODO: in transform.py we have our data, now get it here
         test_json = []
         for idx, row in enumerate(test_X):
-            if idx < 50:
+            if idx < len(file_streams)-1:
                 test_json.append({
                     features[0]: row[0],
                     features[1]: row[1],
@@ -271,8 +271,8 @@ def create_plot(feature, acoustic_data, time_to_failure):
     if feature == 'Line':
         # xScale = np.linspace(0, len(acoustic_data), len(acoustic_data))
         # xScale2 = np.linspace(150000//2, len(acoustic_data)+(150000//2), len(time_to_failure))
-        xScale = np.linspace(0, 1, len(acoustic_data))
-        xScale2 = np.linspace(0, 1, len(time_to_failure))
+        xScale = np.linspace(0, len(acoustic_data), len(acoustic_data))
+        xScale2 = np.linspace(0, len(acoustic_data), len(time_to_failure))
         # Create traces
         acoustic_data = go.Scatter(
             x=xScale,
@@ -281,7 +281,7 @@ def create_plot(feature, acoustic_data, time_to_failure):
         )
         time_to_failure = go.Scatter(
             x=xScale2,
-            y=[t*10 for t in time_to_failure],
+            y=[t*10 for t in time_to_failure], #TODO: remove this; add second x-axis
             name='time to failure',
         )
         layout = go.Layout(
