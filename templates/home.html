@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+	<body>
+    	<title>Earthquick</title>
+    	{% extends "layout.html" %}
+		{% block content %}
+    		<div class="home">
+    			<h1>Earthquick</h1>
+    				<form action="" method=post enctype=multipart/form-data>
+     		 			<input type="file" name="file[]" multiple="">
+         		 	   	<input type="submit" value="Upload">
+    				</form>
+    	{% endblock %}
+	</body>
+<html>

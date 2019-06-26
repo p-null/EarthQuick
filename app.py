@@ -98,15 +98,15 @@ def parse_sample_test(dat):
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
-    html = '''
-    <!doctype html>
-    <title>Upload new File</title>
-    <h1>Upload new File</h1>
-    <form action="" method=post enctype=multipart/form-data>
-      <p><input type="file" name="file[]" multiple="">
-         <input type="submit" value="Upload">
-    </form>
-    '''
+   # html = '''
+   #<!doctype html>
+   # <title>Upload new File</title>
+    #<h1>Upload new File</h1>
+   # <form action="" method=post enctype=multipart/form-data>
+   #   <p><input type="file" name="file[]" multiple="">
+   #      <input type="submit" value="Upload">
+   # </form>
+   # '''
     if request.method == 'POST':
         # file = request.files['file']
         uploaded_files = request.files.getlist("file[]")
@@ -233,7 +233,15 @@ def upload_file():
         # '''
 
 
-    return html
+    return render_template('home.html')
+
+@app.route('/about/')
+def about():
+    return render_template('about.html')
+
+@app.route('/whitepaper/')
+def whitepaper():
+    return render_template('whitepaper.html')
 
 def create_plot(feature, acoustic_data, time_to_failure):
     if feature == 'Line':
