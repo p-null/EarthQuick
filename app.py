@@ -44,7 +44,7 @@ else:
     from io import StringIO
 
 app = Flask(__name__, instance_relative_config=True)
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 1000 * 1024 * 1024
 
 
 blob_client = azureblob.BlockBlobService(
@@ -135,15 +135,17 @@ def home():
         # test_X = test[features].values
         #TODO: in transform.py we have our data, now get it here
         test_json = []
-        for row in test_X:
-            print(row)
-            test_json.append({
-                features[0]: row[0],
-                features[1]: row[1],
-                features[2]: row[2],
-                features[3]: row[3],
-            })
-        pdb.set_trace()
+        for idx, row in enumerate(test_X):
+            if idx < 50:
+                test_json.append({
+                    features[0]: row[0],
+                    features[1]: row[1],
+                    features[2]: row[2],
+                    features[3]: row[3],
+                })
+
+        # pdb.set_trace()
+
         # filename = secure_filename(file.filename)
         # fileextension = filename.rsplit('.', 1)[1]
         # pdb.set_trace()
@@ -158,14 +160,19 @@ def home():
         #             return html
         #TODO: have test_json by this stage after it has gone through batch processing 
         # TODO: the parts after this likely have to go in print_task_output in batch.py
-        pdb.set_trace()
-        res = requests.post('http://52.224.188.74/score',
+        res = requests.post('http://52.224.203.109/score',
                             json=test_json)
         # res = requests.post('http://52.224.186.42/score',
         #                     json=json.loads(test.to_json()))
 
+
+        # pdb.set_trace()
+
         feature = 'Line'
-        acoustic_data = [int(a) for a in acoustic_data if a.isdigit()]
+        acoustic_data = pd.concat([pd.read_csv(f.stream)
+                                   for f in file_streams[1:]])
+        acoustic_data = acoustic_data['acoustic_data']
+        # acoustic_data = [int(a) for a in acoustic_data if a.isdigit()]
         time_to_failure = [float(t) for t in json.loads(res.json())['result'].split(',')]
         plot_res = create_plot(feature, acoustic_data, time_to_failure)
         return render_template('index.html', plot=plot_res)
