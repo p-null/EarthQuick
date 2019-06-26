@@ -1,0 +1,17 @@
+    	{% extends "layout.html" %}
+		{% block content %}
+    		<div class="home">
+    			<h3>Upload your files below to get the prediction data</h3>
+    				<form action="" method=post enctype=multipart/form-data>
+     		 			<input type="file" name="file[]" multiple="">
+         		 	   	<input type="submit" value="Upload">
+         		 	   	<style>
+							input[type="submit"]{
+    							background-color: #555;
+    							color: #fff;
+   								border-radius: 10px;
+							}
+						</style>
+    				</form>
+    			</div>
+    	{% endblock %}
