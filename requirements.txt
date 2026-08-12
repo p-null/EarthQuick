@@ -92,7 +92,7 @@ chardet==3.0.4
 Click==7.0
 cloudpickle==1.2.0
 cryptography==2.7
-dask==1.2.2
+dask==2021.10.0
 decorator==4.4.0
 distributed==1.28.1
 Flask==1.0.3
